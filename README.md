@@ -32,9 +32,17 @@
     <th>DEPARTMENT</th>
   </tr>
   <tr>
-    <td>1,2</td>
-    <td>tilahun tolesa,andarge girma</td>
-    <td>8638/17,8739</td>
+    <td>1</td>
+    <td>tilahun tolesa</td>
+    <td>8638/17</td>
+    <td>SE</td>
+  </tr>
+     <td>2</td>
+    <td>andarge girma</td>
+    <td>8739/17</td>
+    <td>SE</td>
+  <tr>
+    
   </tr>
 </table>
 ## 📋 Table of Contents
