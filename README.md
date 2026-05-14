@@ -39,20 +39,26 @@
     <td>8638/17</td>
     <td>SE</td>
   </tr>
+    <tr>
+    <td>2</td>
+    <td>yohanna shimelis</td>
+    <td>8457/17</td>
+    <td>SE</td>
+  </tr>
   <tr>
-     <td>2</td>
+     <td>3</td>
     <td>andarge girma</td>
     <td>8739/17</td>
     <td>SE</td>
   </tr>
  <tr>
-     <td>3</td>
+     <td>4</td>
     <td>Dinu Mohammed </td>
     <td>8883/17</td>
     <td>SE</td>
  </tr>
  <tr>
-     <td>3</td>
+     <td>5</td>
     <td>emnet lema</td>
     <td>7872/17</td>
     <td>SE</td>
