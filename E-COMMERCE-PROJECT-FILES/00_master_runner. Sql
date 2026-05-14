@@ -78,3 +78,44 @@ SELECT TABLE_NAME, INDEX_NAME, COLUMN_NAME, NON_UNIQUE, SEQ_IN_INDEX
 FROM   information_schema.STATISTICS
 WHERE  TABLE_SCHEMA = 'eth_ecommerce'
 ORDER BY TABLE_NAME, INDEX_NAME, SEQ_IN_INDEX;
+
+-- =============================================================================
+-- QUICK FUNCTIONAL TEST:
+-- =============================================================================
+
+-- Test: Place an order via stored procedure
+SET @v_order_id = NULL;
+SET @v_order_num = NULL;
+SET @v_ok = 0;
+SET @v_msg = '';
+
+CALL sp_place_order(
+    10,     -- customer_id (Selam Getachew)
+    2,      -- seller_id   (EthTech Store)
+    1,      -- shipping_address_id
+    1,      -- billing_address_id
+    1,      -- warehouse_id (Addis Main)
+    1,      -- payment_method (Telebirr)
+    'NEWUSER20',  -- coupon_code
+    UUID(), -- idempotency_key (generate fresh UUID each run)
+    '[{"variant_id":2,"quantity":1,"unit_price":16999.00}]',  -- items (Galaxy A54 White)
+    @v_order_id,
+    @v_order_num,
+    @v_ok,
+    @v_msg
+);
+
+SELECT @v_ok AS success, @v_msg AS message, @v_order_id AS order_id, @v_order_num AS order_number;
+
+-- Verify inventory was reserved
+SELECT variant_id, warehouse_id, quantity_on_hand, reserved_quantity,
+       (quantity_on_hand - reserved_quantity) AS available
+FROM   inventory
+WHERE  variant_id = 2 AND warehouse_id = 1;
+
+-- View the new order
+SELECT * FROM vw_order_detail WHERE order_id = @v_order_id;
+
+-- =============================================================================
+-- END OF MASTER RUNNER
+-- =============================================================================
