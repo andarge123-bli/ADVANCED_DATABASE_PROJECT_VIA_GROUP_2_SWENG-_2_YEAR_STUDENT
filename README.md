@@ -63,6 +63,12 @@
     <td>7872/17</td>
     <td>SE</td>
   </tr>
+  <tr>
+     <td>6</td>
+    <td>Abrham Tsega</td>
+    <td>8554/17</td>
+    <td>SE</td>
+  </tr>
   
 </table>
 ## 📋 Table of Contents
