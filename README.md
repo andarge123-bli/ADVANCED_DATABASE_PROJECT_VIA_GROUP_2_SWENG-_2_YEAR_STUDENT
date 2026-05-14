@@ -31,6 +31,11 @@
     <th>STUDENT ID</th>
     <th>DEPARTMENT</th>
   </tr>
+  <tr>
+    <td>1,2</td>
+    <td>tilahun tolesa,andarge girma</td>
+    <td>8638/17,8739</td>
+  </tr>
 </table>
 ## 📋 Table of Contents
 
