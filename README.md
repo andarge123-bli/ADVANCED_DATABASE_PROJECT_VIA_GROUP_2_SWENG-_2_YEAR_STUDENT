@@ -46,7 +46,7 @@
   <tr>
  </tr>
      <td>3</td>
-    <td>Dinu Mohammed /td>
+    <td>Dinu Mohammed </td>
     <td>8883/17</td>
     <td>SE</td>
 </table>
