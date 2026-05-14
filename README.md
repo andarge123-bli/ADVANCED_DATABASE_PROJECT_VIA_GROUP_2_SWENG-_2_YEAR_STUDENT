@@ -49,10 +49,6 @@
     <td>Dinu Mohammed /td>
     <td>8883/17</td>
     <td>SE</td>
-  <tr>
-  
-    
-  </tr>
 </table>
 ## 📋 Table of Contents
 
