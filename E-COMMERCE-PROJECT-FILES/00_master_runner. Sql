@@ -1,0 +1,40 @@
+-- =============================================================================
+-- MASTER RUNNER — Ethiopia E-Commerce Platform
+-- File: 00_master_runner.sql
+-- =============================================================================
+-- Run this file in order, or execute individual scripts as needed.
+-- Tested on: MySQL 8.0.35+
+-- Character Set: utf8mb4 / utf8mb4_unicode_ci
+-- Engine: InnoDB
+-- =============================================================================
+-- EXECUTION ORDER (required):
+--
+-- Step 1: Schema & DDL
+--   SOURCE 01_schema_ddl.sql;
+--
+-- Step 2: Security & RBAC
+--   SOURCE 02_security_rbac.sql;
+--
+-- Step 3: Triggers
+--   SOURCE 03_triggers.sql;
+--
+-- Step 4: Stored Procedures & Functions
+--   SOURCE 04_stored_procedures.sql;
+--
+-- Step 5: Views
+--   SOURCE 05_views.sql;
+--
+-- Step 6: Events (MySQL Event Scheduler)
+--   SOURCE 06_events.sql;
+--
+-- Step 7: Sample Data
+--   SOURCE 07_sample_data.sql;
+--
+-- Step 8: Optimized Queries & EXPLAIN examples
+--   SOURCE 08_queries_explain.sql;
+--
+-- Step 9: Distributed Architecture & Partitioning
+--   SOURCE 09_distributed_arch.sql;
+-- =============================================================================
+-- QUICK VERIFICATION after running all scripts:
+-- ============================
