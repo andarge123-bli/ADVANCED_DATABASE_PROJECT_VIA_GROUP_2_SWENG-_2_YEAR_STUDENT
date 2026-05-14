@@ -38,3 +38,43 @@
 -- =============================================================================
 -- QUICK VERIFICATION after running all scripts:
 -- ============================
+USE eth_ecommerce;
+
+-- Verify tables created
+SELECT TABLE_NAME, TABLE_ROWS, DATA_LENGTH, INDEX_LENGTH,
+       ROUND((DATA_LENGTH + INDEX_LENGTH) / 1024 / 1024, 2) AS size_mb
+FROM   information_schema.TABLES
+WHERE  TABLE_SCHEMA = 'eth_ecommerce'
+ORDER BY TABLE_NAME;
+
+-- Verify stored procedures
+SELECT ROUTINE_NAME, ROUTINE_TYPE, CREATED
+FROM   information_schema.ROUTINES
+WHERE  ROUTINE_SCHEMA = 'eth_ecommerce'
+ORDER BY ROUTINE_TYPE, ROUTINE_NAME;
+
+-- Verify triggers
+SELECT TRIGGER_NAME, EVENT_MANIPULATION, EVENT_OBJECT_TABLE,
+       ACTION_TIMING, CREATED
+FROM   information_schema.TRIGGERS
+WHERE  TRIGGER_SCHEMA = 'eth_ecommerce'
+ORDER BY EVENT_OBJECT_TABLE, ACTION_TIMING;
+
+-- Verify events
+SELECT EVENT_NAME, STATUS, INTERVAL_VALUE, INTERVAL_FIELD,
+       LAST_EXECUTED, NEXT_EXECUTION
+FROM   information_schema.EVENTS
+WHERE  EVENT_SCHEMA = 'eth_ecommerce'
+ORDER BY EVENT_NAME;
+
+-- Verify views
+SELECT TABLE_NAME AS view_name
+FROM   information_schema.VIEWS
+WHERE  TABLE_SCHEMA = 'eth_ecommerce'
+ORDER BY TABLE_NAME;
+
+-- Verify indexes
+SELECT TABLE_NAME, INDEX_NAME, COLUMN_NAME, NON_UNIQUE, SEQ_IN_INDEX
+FROM   information_schema.STATISTICS
+WHERE  TABLE_SCHEMA = 'eth_ecommerce'
+ORDER BY TABLE_NAME, INDEX_NAME, SEQ_IN_INDEX;
