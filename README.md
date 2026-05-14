@@ -24,7 +24,14 @@
 </div>
 
 ---
-
+<table >
+  <tr>
+    <th>NO</th>
+    <th>STUDENT NAME</th>
+    <th>STUDENT ID</th>
+    <th>DEPARTMENT</th>
+  </tr>
+</table>
 ## 📋 Table of Contents
 
 - [Project Overview](#-project-overview)
