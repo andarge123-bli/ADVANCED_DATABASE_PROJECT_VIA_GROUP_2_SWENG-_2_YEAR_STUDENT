@@ -413,3 +413,200 @@ CREATE TABLE inventory (
     KEY        idx_inv_warehouse (warehouse_id),
     KEY        idx_inv_low_stock (low_stock_alert, quantity_on_hand)
 ) ENGINE=InnoDB COMMENT='Real-time inventory per variant per warehouse';
+-- ---------------------------------------------------------------------------
+-- 4.3  INVENTORY TRANSACTIONS  (full audit trail)
+-- ---------------------------------------------------------------------------
+CREATE TABLE inventory_transactions (
+    txn_id          BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    inventory_id    BIGINT UNSIGNED NOT NULL,
+    variant_id      BIGINT UNSIGNED NOT NULL,
+    warehouse_id    INT UNSIGNED    NOT NULL,
+    txn_type        ENUM('RESTOCK','SALE','RESERVATION','RELEASE',
+                         'CANCELLATION','ADJUSTMENT','RETURN','TRANSFER')
+                    NOT NULL,
+    quantity_delta  INT NOT NULL COMMENT 'Positive = stock in, negative = stock out',
+    quantity_after  INT NOT NULL COMMENT 'Snapshot of quantity_on_hand after txn',
+    reference_type  VARCHAR(50) NULL COMMENT 'order, return, transfer',
+    reference_id    BIGINT UNSIGNED NULL,
+    notes           VARCHAR(500) NULL,
+    created_by      BIGINT UNSIGNED NULL,
+    created_at      DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+
+    CONSTRAINT fk_invtxn_inv FOREIGN KEY (inventory_id)
+        REFERENCES inventory(inventory_id) ON DELETE RESTRICT,
+
+    KEY idx_invtxn_inventory  (inventory_id, created_at),
+    KEY idx_invtxn_variant    (variant_id, created_at),
+    KEY idx_invtxn_reference  (reference_type, reference_id),
+    KEY idx_invtxn_type       (txn_type, created_at)
+) ENGINE=InnoDB COMMENT='Immutable inventory movement ledger';
+
+-- =============================================================================
+-- SECTION 5: ORDERS & ORDER ITEMS
+-- =============================================================================
+
+-- ---------------------------------------------------------------------------
+-- 5.1  ORDERS
+-- ---------------------------------------------------------------------------
+CREATE TABLE orders (
+    order_id          BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    order_number      VARCHAR(30)     NOT NULL COMMENT 'Human-readable: ETH-20260407-000001',
+    customer_id       BIGINT UNSIGNED NOT NULL,
+    seller_id         BIGINT UNSIGNED NOT NULL COMMENT 'Marketplace: one order per seller',
+    shipping_address_id BIGINT UNSIGNED NULL,
+    billing_address_id  BIGINT UNSIGNED NULL,
+    warehouse_id      INT UNSIGNED NULL,
+    region_id         SMALLINT UNSIGNED NULL COMMENT 'Fulfillment region',
+    status_id         TINYINT UNSIGNED NOT NULL DEFAULT 1,
+
+    -- Financial summary (denormalized for performance)
+    subtotal          DECIMAL(14,2) NOT NULL DEFAULT 0.00,
+    discount_amount   DECIMAL(14,2) NOT NULL DEFAULT 0.00,
+    shipping_fee      DECIMAL(14,2) NOT NULL DEFAULT 0.00,
+    tax_amount        DECIMAL(14,2) NOT NULL DEFAULT 0.00,
+    total_amount      DECIMAL(14,2) NOT NULL DEFAULT 0.00,
+    currency          CHAR(3)       NOT NULL DEFAULT 'ETB',
+
+    payment_method_id TINYINT UNSIGNED NULL,
+    payment_status    ENUM('PENDING','AUTHORIZED','CAPTURED','PARTIALLY_REFUNDED',
+                           'REFUNDED','FAILED','CANCELLED')
+                      NOT NULL DEFAULT 'PENDING',
+    coupon_code       VARCHAR(50) NULL,
+    notes             TEXT NULL,
+
+    -- Timestamps
+    placed_at         DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    confirmed_at      DATETIME(3)  NULL,
+    shipped_at        DATETIME(3)  NULL,
+    delivered_at      DATETIME(3)  NULL,
+    cancelled_at      DATETIME(3)  NULL,
+    updated_at        DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+
+    -- Soft delete / archive
+    deleted_at        DATETIME(3)  NULL,
+
+    CONSTRAINT fk_ord_customer  FOREIGN KEY (customer_id)          REFERENCES users(user_id)             ON DELETE RESTRICT,
+    CONSTRAINT fk_ord_seller    FOREIGN KEY (seller_id)            REFERENCES users(user_id)             ON DELETE RESTRICT,
+    CONSTRAINT fk_ord_ship_addr FOREIGN KEY (shipping_address_id)  REFERENCES user_addresses(address_id) ON DELETE SET NULL,
+    CONSTRAINT fk_ord_bill_addr FOREIGN KEY (billing_address_id)   REFERENCES user_addresses(address_id) ON DELETE SET NULL,
+    CONSTRAINT fk_ord_wh        FOREIGN KEY (warehouse_id)         REFERENCES warehouses(warehouse_id)   ON DELETE SET NULL,
+    CONSTRAINT fk_ord_region    FOREIGN KEY (region_id)            REFERENCES regions(region_id)         ON DELETE SET NULL,
+    CONSTRAINT fk_ord_status    FOREIGN KEY (status_id)            REFERENCES order_statuses(status_id)  ON DELETE RESTRICT,
+    CONSTRAINT fk_ord_pay_meth  FOREIGN KEY (payment_method_id)    REFERENCES payment_method_types(method_id),
+    CONSTRAINT chk_ord_total    CHECK (total_amount >= 0),
+
+    UNIQUE KEY uq_order_number          (order_number),
+    KEY        idx_ord_customer_date    (customer_id, placed_at),
+    KEY        idx_ord_seller_date      (seller_id,   placed_at),
+    KEY        idx_ord_status           (status_id,   placed_at),
+    KEY        idx_ord_payment_status   (payment_status),
+    KEY        idx_ord_region_date      (region_id,   placed_at),
+    KEY        idx_ord_placed_at        (placed_at)
+) ENGINE=InnoDB COMMENT='Customer orders'
+  -- Range partitioning defined in 09_distributed_arch.sql
+  ;
+
+-- ---------------------------------------------------------------------------
+-- 5.2  ORDER ITEMS
+-- ---------------------------------------------------------------------------
+CREATE TABLE order_items (
+    item_id       BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    order_id      BIGINT UNSIGNED NOT NULL,
+    product_id    BIGINT UNSIGNED NOT NULL,
+    variant_id    BIGINT UNSIGNED NOT NULL,
+    warehouse_id  INT UNSIGNED    NOT NULL COMMENT 'Source warehouse at time of order',
+    quantity      INT UNSIGNED    NOT NULL,
+    unit_price    DECIMAL(14,2)   NOT NULL COMMENT 'Price at time of purchase (snapshot)',
+    discount_pct  DECIMAL(5,2)    NOT NULL DEFAULT 0.00,
+    line_total    DECIMAL(14,2)   NOT NULL COMMENT 'quantity * unit_price * (1-discount)',
+    status        ENUM('ACTIVE','CANCELLED','RETURNED') NOT NULL DEFAULT 'ACTIVE',
+    created_at    DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_at    DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+
+    CONSTRAINT fk_oi_order    FOREIGN KEY (order_id)    REFERENCES orders(order_id)           ON DELETE CASCADE,
+    CONSTRAINT fk_oi_product  FOREIGN KEY (product_id)  REFERENCES products(product_id)       ON DELETE RESTRICT,
+    CONSTRAINT fk_oi_variant  FOREIGN KEY (variant_id)  REFERENCES product_variants(variant_id) ON DELETE RESTRICT,
+    CONSTRAINT fk_oi_wh       FOREIGN KEY (warehouse_id) REFERENCES warehouses(warehouse_id)  ON DELETE RESTRICT,
+    CONSTRAINT chk_oi_qty     CHECK (quantity > 0),
+    CONSTRAINT chk_oi_price   CHECK (unit_price >= 0),
+
+    KEY idx_oi_order    (order_id),
+    KEY idx_oi_product  (product_id, created_at),
+    KEY idx_oi_variant  (variant_id, created_at),
+    KEY idx_oi_wh       (warehouse_id)
+) ENGINE=InnoDB COMMENT='Line items within an order';
+
+-- =============================================================================
+-- SECTION 6: PAYMENTS
+-- =============================================================================
+
+-- ---------------------------------------------------------------------------
+-- 6.1  PAYMENTS  (idempotency-safe, one row per attempt)
+-- ---------------------------------------------------------------------------
+CREATE TABLE payments (
+    payment_id         BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    order_id           BIGINT UNSIGNED NOT NULL,
+    customer_id        BIGINT UNSIGNED NOT NULL,
+    method_id          TINYINT UNSIGNED NOT NULL,
+    idempotency_key    VARCHAR(128)    NOT NULL COMMENT 'Client-generated UUID; prevents duplicate charges',
+    amount             DECIMAL(14,2)   NOT NULL,
+    currency           CHAR(3)         NOT NULL DEFAULT 'ETB',
+    status             ENUM('PENDING','PROCESSING','SUCCESS','FAILED',
+                            'CANCELLED','REFUNDED','PARTIALLY_REFUNDED')
+                       NOT NULL DEFAULT 'PENDING',
+    gateway_reference  VARCHAR(200)    NULL COMMENT 'Telebirr txn ID, bank ref, etc.',
+    gateway_response   JSON            NULL COMMENT 'Raw gateway payload',
+    paid_at            DATETIME(3)     NULL,
+    refunded_amount    DECIMAL(14,2)   NOT NULL DEFAULT 0.00,
+    failure_reason     VARCHAR(500)    NULL,
+    ip_address         VARBINARY(64)   NULL COMMENT 'Encrypted IP',
+    device_fingerprint VARCHAR(255)    NULL,
+    is_flagged         TINYINT(1)      NOT NULL DEFAULT 0 COMMENT 'Fraud flag',
+    created_at         DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_at         DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+
+    CONSTRAINT fk_pay_order    FOREIGN KEY (order_id)   REFERENCES orders(order_id)              ON DELETE RESTRICT,
+    CONSTRAINT fk_pay_customer FOREIGN KEY (customer_id) REFERENCES users(user_id)               ON DELETE RESTRICT,
+    CONSTRAINT fk_pay_method   FOREIGN KEY (method_id)  REFERENCES payment_method_types(method_id),
+    CONSTRAINT chk_pay_amount  CHECK (amount > 0),
+    CONSTRAINT chk_pay_refund  CHECK (refunded_amount >= 0 AND refunded_amount <= amount),
+
+    UNIQUE KEY uq_idempotency_key  (idempotency_key),
+    KEY        idx_pay_order       (order_id),
+    KEY        idx_pay_customer    (customer_id, created_at),
+    KEY        idx_pay_status      (status, created_at),
+    KEY        idx_pay_gateway     (gateway_reference),
+    KEY        idx_pay_flagged     (is_flagged, created_at)
+) ENGINE=InnoDB COMMENT='Payment attempts (idempotent)';
+
+-- ---------------------------------------------------------------------------
+-- 6.2  REFUNDS
+-- ---------------------------------------------------------------------------
+CREATE TABLE refunds (
+    refund_id        BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    payment_id       BIGINT UNSIGNED NOT NULL,
+    order_id         BIGINT UNSIGNED NOT NULL,
+    requested_by     BIGINT UNSIGNED NOT NULL COMMENT 'user_id of requester',
+    approved_by      BIGINT UNSIGNED NULL,
+    refund_amount    DECIMAL(14,2)   NOT NULL,
+    reason           VARCHAR(500)    NOT NULL,
+    status           ENUM('PENDING','APPROVED','PROCESSED','REJECTED','FAILED')
+                     NOT NULL DEFAULT 'PENDING',
+    gateway_ref      VARCHAR(200)    NULL,
+    notes            TEXT            NULL,
+    created_at       DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_at       DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+
+    CONSTRAINT fk_refund_payment FOREIGN KEY (payment_id) REFERENCES payments(payment_id),
+    CONSTRAINT fk_refund_order   FOREIGN KEY (order_id)   REFERENCES orders(order_id),
+    CONSTRAINT chk_refund_amt    CHECK (refund_amount > 0),
+
+    KEY idx_refund_payment (payment_id),
+    KEY idx_refund_order   (order_id),
+    KEY idx_refund_status  (status, created_at)
+) ENGINE=InnoDB COMMENT='Refund requests and processing';
+
+-- =============================================================================
+-- SECTION 7: SECURITY & AUDIT
+-- =============================================================================
+    
