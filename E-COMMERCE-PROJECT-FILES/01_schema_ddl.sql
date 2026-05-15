@@ -609,4 +609,238 @@ CREATE TABLE refunds (
 -- =============================================================================
 -- SECTION 7: SECURITY & AUDIT
 -- =============================================================================
-    
+    -- ---------------------------------------------------------------------------
+-- 7.1  LOGIN ATTEMPTS
+-- ---------------------------------------------------------------------------
+CREATE TABLE login_attempts (
+    attempt_id    BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id       BIGINT UNSIGNED NULL COMMENT 'NULL if user not found',
+    email         VARCHAR(255)    NULL,
+    ip_address    VARBINARY(64)   NOT NULL COMMENT 'Encrypted',
+    user_agent    VARCHAR(500)    NULL,
+    status        ENUM('SUCCESS','FAILED','BLOCKED') NOT NULL,
+    failure_reason VARCHAR(200)   NULL,
+    attempted_at  DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+
+    KEY idx_login_user     (user_id, attempted_at),
+    KEY idx_login_ip       (ip_address(32), attempted_at),
+    KEY idx_login_status   (status, attempted_at)
+) ENGINE=InnoDB COMMENT='All authentication attempts for security monitoring'
+  -- Partitioned by month in 09_distributed_arch.sql
+  ;
+
+-- ---------------------------------------------------------------------------
+-- 7.2  AUDIT LOGS  (append-only ledger)
+-- ---------------------------------------------------------------------------
+CREATE TABLE audit_logs (
+    log_id        BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id       BIGINT UNSIGNED NULL,
+    session_id    VARCHAR(128)    NULL,
+    action        VARCHAR(100)    NOT NULL COMMENT 'e.g. ORDER_CREATED, PAYMENT_PROCESSED',
+    entity_type   VARCHAR(50)     NOT NULL COMMENT 'orders, payments, products, users',
+    entity_id     BIGINT UNSIGNED NULL,
+    old_values    JSON            NULL COMMENT 'Snapshot before change',
+    new_values    JSON            NULL COMMENT 'Snapshot after change',
+    ip_address    VARBINARY(64)   NULL,
+    user_agent    VARCHAR(500)    NULL,
+    status        ENUM('SUCCESS','FAILURE','WARNING') NOT NULL DEFAULT 'SUCCESS',
+    message       VARCHAR(1000)   NULL,
+    created_at    DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+
+    KEY idx_audit_user      (user_id, created_at),
+    KEY idx_audit_entity    (entity_type, entity_id, created_at),
+    KEY idx_audit_action    (action, created_at),
+    KEY idx_audit_status    (status, created_at)
+) ENGINE=InnoDB COMMENT='Append-only system audit trail'
+  -- Partitioned by month in 09_distributed_arch.sql
+  ;
+
+-- ---------------------------------------------------------------------------
+-- 7.3  FRAUD LOGS
+-- ---------------------------------------------------------------------------
+CREATE TABLE fraud_logs (
+    fraud_id       BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id        BIGINT UNSIGNED NULL,
+    order_id       BIGINT UNSIGNED NULL,
+    payment_id     BIGINT UNSIGNED NULL,
+    fraud_type     ENUM('VELOCITY_ABUSE','PAYMENT_FAILURE','ACCOUNT_TAKEOVER',
+                        'MULTIPLE_ACCOUNTS','SUSPICIOUS_IP','CHARGEBACK',
+                        'REVIEW_FRAUD','COUPON_ABUSE','OTHER')
+                   NOT NULL,
+    risk_score     TINYINT UNSIGNED NOT NULL DEFAULT 0 COMMENT '0-100',
+    details        JSON            NOT NULL,
+    action_taken   ENUM('FLAGGED','BLOCKED','SUSPENDED','ESCALATED','DISMISSED')
+                   NOT NULL DEFAULT 'FLAGGED',
+    reviewed_by    BIGINT UNSIGNED NULL,
+    reviewed_at    DATETIME(3)    NULL,
+    created_at     DATETIME(3)    NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+
+    KEY idx_fraud_user    (user_id, created_at),
+    KEY idx_fraud_order   (order_id),
+    KEY idx_fraud_payment (payment_id),
+    KEY idx_fraud_type    (fraud_type, created_at),
+    KEY idx_fraud_score   (risk_score DESC, created_at)
+) ENGINE=InnoDB COMMENT='Fraud detection events';
+
+-- ---------------------------------------------------------------------------
+-- 7.4  USER SESSIONS
+-- ---------------------------------------------------------------------------
+CREATE TABLE user_sessions (
+    session_id    VARCHAR(128)    PRIMARY KEY,
+    user_id       BIGINT UNSIGNED NOT NULL,
+    ip_address    VARBINARY(64)   NOT NULL,
+    user_agent    VARCHAR(500)    NULL,
+    device_type   ENUM('MOBILE','TABLET','DESKTOP','OTHER') NOT NULL DEFAULT 'OTHER',
+    is_active     TINYINT(1)      NOT NULL DEFAULT 1,
+    expires_at    DATETIME(3)     NOT NULL,
+    created_at    DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    last_active_at DATETIME(3)    NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+
+    CONSTRAINT fk_session_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+
+    KEY idx_session_user    (user_id, is_active),
+    KEY idx_session_expires (expires_at)
+) ENGINE=InnoDB COMMENT='Active user sessions';
+
+-- =============================================================================
+-- SECTION 8: ANALYTICS AGGREGATE TABLES (pre-computed for performance)
+-- =============================================================================
+
+-- ---------------------------------------------------------------------------
+-- 8.1  DAILY SALES SUMMARY
+-- ---------------------------------------------------------------------------
+CREATE TABLE daily_sales_summary (
+    summary_date      DATE            NOT NULL,
+    region_id         SMALLINT UNSIGNED NOT NULL,
+    seller_id         BIGINT UNSIGNED  NOT NULL,
+    total_orders      INT UNSIGNED     NOT NULL DEFAULT 0,
+    total_revenue     DECIMAL(18,2)    NOT NULL DEFAULT 0.00,
+    total_items_sold  INT UNSIGNED     NOT NULL DEFAULT 0,
+    total_refunds     DECIMAL(18,2)    NOT NULL DEFAULT 0.00,
+    avg_order_value   DECIMAL(14,2)    NOT NULL DEFAULT 0.00,
+    updated_at        DATETIME(3)      NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+
+    PRIMARY KEY (summary_date, region_id, seller_id),
+    KEY idx_dss_date   (summary_date),
+    KEY idx_dss_region (region_id, summary_date),
+    KEY idx_dss_seller (seller_id, summary_date)
+) ENGINE=InnoDB COMMENT='Pre-aggregated daily sales data for dashboards';
+
+-- ---------------------------------------------------------------------------
+-- 8.2  PRODUCT SALES STATS  (updated by trigger/event)
+-- ---------------------------------------------------------------------------
+CREATE TABLE product_sales_stats (
+    product_id       BIGINT UNSIGNED NOT NULL,
+    period_date      DATE            NOT NULL,
+    units_sold       INT UNSIGNED    NOT NULL DEFAULT 0,
+    revenue          DECIMAL(14,2)   NOT NULL DEFAULT 0.00,
+    returns          INT UNSIGNED    NOT NULL DEFAULT 0,
+    views            INT UNSIGNED    NOT NULL DEFAULT 0,
+    updated_at       DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+
+    PRIMARY KEY (product_id, period_date),
+    CONSTRAINT fk_pss_product FOREIGN KEY (product_id) REFERENCES products(product_id) ON DELETE CASCADE,
+    KEY idx_pss_date (period_date, revenue DESC)
+) ENGINE=InnoDB COMMENT='Daily product performance metrics';
+
+-- ---------------------------------------------------------------------------
+-- 8.3  CUSTOMER LIFETIME VALUE  (updated by event)
+-- ---------------------------------------------------------------------------
+CREATE TABLE customer_ltv (
+    customer_id      BIGINT UNSIGNED NOT NULL PRIMARY KEY,
+    first_order_date DATE            NULL,
+    last_order_date  DATE            NULL,
+    total_orders     INT UNSIGNED    NOT NULL DEFAULT 0,
+    total_spent      DECIMAL(18,2)   NOT NULL DEFAULT 0.00,
+    total_refunds    DECIMAL(18,2)   NOT NULL DEFAULT 0.00,
+    avg_order_value  DECIMAL(14,2)   NOT NULL DEFAULT 0.00,
+    ltv_score        DECIMAL(10,2)   NOT NULL DEFAULT 0.00,
+    segment          ENUM('NEW','ACTIVE','VIP','AT_RISK','CHURNED') NOT NULL DEFAULT 'NEW',
+    updated_at       DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+
+    CONSTRAINT fk_ltv_customer FOREIGN KEY (customer_id) REFERENCES users(user_id) ON DELETE CASCADE,
+    KEY idx_ltv_segment (segment, ltv_score DESC),
+    KEY idx_ltv_score   (ltv_score DESC)
+) ENGINE=InnoDB COMMENT='Customer lifetime value tracking';
+
+-- =============================================================================
+-- SECTION 9: PRODUCT REVIEWS
+-- =============================================================================
+
+CREATE TABLE product_reviews (
+    review_id     BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    product_id    BIGINT UNSIGNED NOT NULL,
+    customer_id   BIGINT UNSIGNED NOT NULL,
+    order_id      BIGINT UNSIGNED NOT NULL COMMENT 'Verified purchase only',
+    rating        TINYINT UNSIGNED NOT NULL,
+    title         VARCHAR(200) NULL,
+    body          TEXT         NULL,
+    is_verified   TINYINT(1)   NOT NULL DEFAULT 1,
+    is_approved   TINYINT(1)   NOT NULL DEFAULT 0,
+    helpful_votes INT UNSIGNED NOT NULL DEFAULT 0,
+    deleted_at    DATETIME(3)  NULL,
+    created_at    DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+
+    CONSTRAINT fk_rev_product  FOREIGN KEY (product_id)  REFERENCES products(product_id) ON DELETE CASCADE,
+    CONSTRAINT fk_rev_customer FOREIGN KEY (customer_id) REFERENCES users(user_id)       ON DELETE CASCADE,
+    CONSTRAINT fk_rev_order    FOREIGN KEY (order_id)    REFERENCES orders(order_id)     ON DELETE CASCADE,
+    CONSTRAINT chk_rev_rating  CHECK (rating BETWEEN 1 AND 5),
+
+    UNIQUE KEY uq_review_order_product (order_id, product_id) COMMENT 'One review per order item',
+    KEY        idx_rev_product_approved (product_id, is_approved, created_at),
+    KEY        idx_rev_customer         (customer_id),
+    KEY        idx_rev_rating           (product_id, rating),
+    FULLTEXT KEY ft_review_body         (title, body)
+) ENGINE=InnoDB COMMENT='Verified purchase product reviews';
+
+-- =============================================================================
+-- SECTION 10: COUPONS & PROMOTIONS
+-- =============================================================================
+
+CREATE TABLE coupons (
+    coupon_id      INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    coupon_code    VARCHAR(50)  NOT NULL,
+    description    VARCHAR(300) NULL,
+    discount_type  ENUM('PERCENTAGE','FIXED_AMOUNT','FREE_SHIPPING') NOT NULL,
+    discount_value DECIMAL(10,2) NOT NULL,
+    min_order_amt  DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+    max_discount   DECIMAL(10,2) NULL COMMENT 'Cap for percentage discounts',
+    usage_limit    INT UNSIGNED  NULL COMMENT 'NULL = unlimited',
+    usage_count    INT UNSIGNED  NOT NULL DEFAULT 0,
+    per_user_limit INT UNSIGNED  NOT NULL DEFAULT 1,
+    valid_from     DATETIME(3)   NOT NULL,
+    valid_until    DATETIME(3)   NOT NULL,
+    is_active      TINYINT(1)    NOT NULL DEFAULT 1,
+    created_by     BIGINT UNSIGNED NOT NULL,
+    created_at     DATETIME(3)   NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+
+    UNIQUE KEY uq_coupon_code (coupon_code),
+    KEY idx_coupon_active    (is_active, valid_from, valid_until)
+) ENGINE=InnoDB COMMENT='Promotional coupons and discount codes';
+
+-- =============================================================================
+-- SECTION 11: NOTIFICATIONS
+-- =============================================================================
+
+CREATE TABLE notifications (
+    notification_id  BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id          BIGINT UNSIGNED NOT NULL,
+    type             VARCHAR(100)    NOT NULL COMMENT 'ORDER_UPDATE, PAYMENT_SUCCESS, etc.',
+    channel          ENUM('EMAIL','SMS','PUSH','IN_APP') NOT NULL,
+    title            VARCHAR(200)    NOT NULL,
+    body             TEXT            NOT NULL,
+    data             JSON            NULL,
+    is_read          TINYINT(1)      NOT NULL DEFAULT 0,
+    sent_at          DATETIME(3)     NULL,
+    read_at          DATETIME(3)     NULL,
+    created_at       DATETIME(3)     NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+
+    CONSTRAINT fk_notif_user FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+
+    KEY idx_notif_user_unread (user_id, is_read, created_at),
+    KEY idx_notif_type        (type, created_at)
+) ENGINE=InnoDB COMMENT='User notification inbox';
+
+-- =============================================================================
+-- END OF SCHEMA DDL
+-- ==========================================================================
