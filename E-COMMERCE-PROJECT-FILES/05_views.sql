@@ -1,3 +1,5 @@
+
+
 -- =============================================================================
 -- ANALYTICAL VIEWS
 -- File: 05_views.sql
@@ -12,11 +14,13 @@
 --   vw_revenue_by_region       — Geographic revenue breakdown
 -- =============================================================================
 
+
 USE eth_ecommerce;
 
 -- =============================================================================
 -- VIEW 1: Sales Summary (daily rollup)
 -- =============================================================================
+
 CREATE OR REPLACE VIEW vw_sales_summary AS
 SELECT
     DATE(o.placed_at)               AS sale_date,
@@ -43,7 +47,7 @@ WHERE o.deleted_at IS NULL
 GROUP BY DATE(o.placed_at), r.region_id, o.seller_id;
 
 -- =============================================================================
--- VIEW 2: Top Selling Products (all time)
+-- VIEW 2: Top Selling Products (IN all time)
 -- =============================================================================
 CREATE OR REPLACE VIEW vw_top_selling_products AS
 SELECT
@@ -75,7 +79,7 @@ GROUP BY p.product_id, c.category_id, sp.seller_id, r.region_id
 ORDER BY total_revenue DESC;
 
 -- =============================================================================
--- VIEW 3: Customer Lifetime Value
+-- VIEW 3: Customer Lifetime Value 
 -- =============================================================================
 CREATE OR REPLACE VIEW vw_customer_lifetime_value AS
 SELECT
