@@ -234,3 +234,182 @@ CREATE TABLE seller_profiles (
 -- =============================================================================
 -- SECTION 3: PRODUCT CATALOG
 -- =============================================================================
+-- ---------------------------------------------------------------------------
+-- 3.1  PRODUCTS
+-- ---------------------------------------------------------------------------
+CREATE TABLE products (
+    product_id    BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    seller_id     BIGINT UNSIGNED NOT NULL,
+    category_id   INT UNSIGNED    NOT NULL,
+    sku           VARCHAR(100) NOT NULL COMMENT 'Global catalog SKU',
+    product_name  VARCHAR(300) NOT NULL,
+    slug          VARCHAR(350) NOT NULL,
+    short_desc    VARCHAR(500) NULL,
+    description   LONGTEXT     NULL,
+    brand         VARCHAR(150) NULL,
+    base_price    DECIMAL(14,2) NOT NULL COMMENT 'In Ethiopian Birr (ETB)',
+    sale_price    DECIMAL(14,2) NULL,
+    cost_price    DECIMAL(14,2) NULL COMMENT 'Seller cost; not shown to buyers',
+    currency      CHAR(3)       NOT NULL DEFAULT 'ETB',
+    weight_grams  INT UNSIGNED  NULL,
+    is_featured   TINYINT(1)    NOT NULL DEFAULT 0,
+    is_active     TINYINT(1)    NOT NULL DEFAULT 1,
+    requires_shipping TINYINT(1) NOT NULL DEFAULT 1,
+    tags          JSON          NULL COMMENT 'Array of tag strings',
+    metadata      JSON          NULL,
+    rating        DECIMAL(3,2)  NOT NULL DEFAULT 0.00,
+    review_count  INT UNSIGNED  NOT NULL DEFAULT 0,
+    deleted_at    DATETIME(3)   NULL,
+    created_at    DATETIME(3)   NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_at    DATETIME(3)   NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+
+    CONSTRAINT fk_prod_seller   FOREIGN KEY (seller_id)   REFERENCES users(user_id)       ON DELETE RESTRICT,
+    CONSTRAINT fk_prod_category FOREIGN KEY (category_id) REFERENCES categories(category_id) ON DELETE RESTRICT,
+    CONSTRAINT chk_prod_price   CHECK (base_price >= 0),
+    CONSTRAINT chk_sale_price   CHECK (sale_price IS NULL OR sale_price >= 0),
+
+    UNIQUE KEY uq_product_sku       (sku),
+    UNIQUE KEY uq_product_slug      (slug),
+    KEY        idx_prod_seller      (seller_id),
+    KEY        idx_prod_category    (category_id),
+    KEY        idx_prod_active      (is_active, deleted_at),
+    KEY        idx_prod_featured    (is_featured, is_active),
+    -- Covering index for product listing (category + price filter)
+    KEY        idx_prod_cat_price   (category_id, base_price, is_active, deleted_at),
+    -- Covering index for seller dashboard
+    KEY        idx_prod_seller_active (seller_id, is_active, created_at),
+    FULLTEXT KEY ft_product_search  (product_name, short_desc, brand)
+) ENGINE=InnoDB COMMENT='Master product catalog';
+
+-- ---------------------------------------------------------------------------
+-- 3.2  PRODUCT IMAGES
+-- ---------------------------------------------------------------------------
+CREATE TABLE product_images (
+    image_id    BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    product_id  BIGINT UNSIGNED NOT NULL,
+    variant_id  BIGINT UNSIGNED NULL COMMENT 'Optional: link to specific variant',
+    url         VARCHAR(500) NOT NULL,
+    alt_text    VARCHAR(300) NULL,
+    sort_order  TINYINT UNSIGNED NOT NULL DEFAULT 0,
+    is_primary  TINYINT(1) NOT NULL DEFAULT 0,
+
+    CONSTRAINT fk_img_product FOREIGN KEY (product_id) REFERENCES products(product_id) ON DELETE CASCADE,
+
+    KEY idx_img_product (product_id, sort_order)
+) ENGINE=InnoDB COMMENT='Product and variant images';
+
+-- ---------------------------------------------------------------------------
+-- 3.3  PRODUCT ATTRIBUTE TYPES  (size, color, material…)
+-- ---------------------------------------------------------------------------
+CREATE TABLE attribute_types (
+    attr_type_id  INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    attr_name     VARCHAR(100) NOT NULL COMMENT 'Color, Size, Material',
+    attr_code     VARCHAR(50)  NOT NULL,
+    display_type  ENUM('SWATCH','DROPDOWN','RADIO','TEXT') NOT NULL DEFAULT 'DROPDOWN',
+    UNIQUE KEY uq_attr_code (attr_code)
+) ENGINE=InnoDB;
+
+-- ---------------------------------------------------------------------------
+-- 3.4  PRODUCT ATTRIBUTE VALUES  (Red, XL, Cotton…)
+-- ---------------------------------------------------------------------------
+CREATE TABLE attribute_values (
+    attr_value_id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    attr_type_id  INT UNSIGNED NOT NULL,
+    value_label   VARCHAR(100) NOT NULL,
+    value_code    VARCHAR(100) NOT NULL,
+    hex_color     CHAR(7) NULL COMMENT '#RRGGBB for swatch',
+    sort_order    TINYINT NOT NULL DEFAULT 0,
+
+    CONSTRAINT fk_attrval_type FOREIGN KEY (attr_type_id)
+        REFERENCES attribute_types(attr_type_id) ON DELETE CASCADE,
+
+    UNIQUE KEY uq_attr_value (attr_type_id, value_code),
+    KEY idx_attrval_type (attr_type_id)
+) ENGINE=InnoDB;
+
+-- ---------------------------------------------------------------------------
+-- 3.5  PRODUCT VARIANTS  (specific sellable combinations)
+-- ---------------------------------------------------------------------------
+CREATE TABLE product_variants (
+    variant_id    BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    product_id    BIGINT UNSIGNED NOT NULL,
+    variant_sku   VARCHAR(150) NOT NULL,
+    variant_name  VARCHAR(200) NULL COMMENT 'e.g. "Red / XL"',
+    price_delta   DECIMAL(10,2) NOT NULL DEFAULT 0.00 COMMENT 'Added to base_price',
+    weight_grams  INT UNSIGNED  NULL,
+    is_active     TINYINT(1)    NOT NULL DEFAULT 1,
+    deleted_at    DATETIME(3)   NULL,
+    created_at    DATETIME(3)   NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_at    DATETIME(3)   NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+
+    CONSTRAINT fk_var_product FOREIGN KEY (product_id)
+        REFERENCES products(product_id) ON DELETE CASCADE,
+    CONSTRAINT chk_price_delta CHECK (price_delta >= -99999),
+
+    UNIQUE KEY uq_variant_sku     (variant_sku),
+    KEY        idx_var_product    (product_id, is_active)
+) ENGINE=InnoDB COMMENT='Specific product variants (SKU-level)';
+
+-- ---------------------------------------------------------------------------
+-- 3.6  VARIANT ATTRIBUTE MAP  (many-to-many)
+-- ---------------------------------------------------------------------------
+CREATE TABLE variant_attributes (
+    variant_id    BIGINT UNSIGNED NOT NULL,
+    attr_value_id INT UNSIGNED NOT NULL,
+
+    PRIMARY KEY (variant_id, attr_value_id),
+    CONSTRAINT fk_va_variant FOREIGN KEY (variant_id)
+        REFERENCES product_variants(variant_id) ON DELETE CASCADE,
+    CONSTRAINT fk_va_attrval FOREIGN KEY (attr_value_id)
+        REFERENCES attribute_values(attr_value_id) ON DELETE RESTRICT,
+    KEY idx_va_attr (attr_value_id)
+) ENGINE=InnoDB COMMENT='Links variant to its attribute values';
+
+-- =============================================================================
+-- SECTION 4: INVENTORY (multi-warehouse, multi-region)
+-- =============================================================================
+
+-- ---------------------------------------------------------------------------
+-- 4.1  WAREHOUSES
+-- ---------------------------------------------------------------------------
+CREATE TABLE warehouses (
+    warehouse_id   INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    region_id      SMALLINT UNSIGNED NOT NULL,
+    warehouse_name VARCHAR(150) NOT NULL,
+    address        VARCHAR(500) NOT NULL,
+    latitude       DECIMAL(10,7) NULL,
+    longitude      DECIMAL(10,7) NULL,
+    is_active      TINYINT(1)   NOT NULL DEFAULT 1,
+    created_at     DATETIME(3)  NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+
+    CONSTRAINT fk_wh_region FOREIGN KEY (region_id) REFERENCES regions(region_id),
+
+    KEY idx_wh_region (region_id),
+    KEY idx_wh_active (is_active)
+) ENGINE=InnoDB COMMENT='Physical fulfillment warehouses per region';
+
+-- ---------------------------------------------------------------------------
+-- 4.2  INVENTORY  (core — one row per variant per warehouse)
+-- ---------------------------------------------------------------------------
+CREATE TABLE inventory (
+    inventory_id       BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    variant_id         BIGINT UNSIGNED NOT NULL,
+    warehouse_id       INT UNSIGNED    NOT NULL,
+    quantity_on_hand   INT NOT NULL DEFAULT 0 COMMENT 'Actual physical stock',
+    reserved_quantity  INT NOT NULL DEFAULT 0 COMMENT 'Held for pending orders',
+    reorder_point      INT NOT NULL DEFAULT 10,
+    reorder_quantity   INT NOT NULL DEFAULT 50,
+    low_stock_alert    TINYINT(1) NOT NULL DEFAULT 0,
+    last_restocked_at  DATETIME(3) NULL,
+    updated_at         DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
+
+    CONSTRAINT fk_inv_variant   FOREIGN KEY (variant_id)   REFERENCES product_variants(variant_id) ON DELETE CASCADE,
+    CONSTRAINT fk_inv_warehouse FOREIGN KEY (warehouse_id) REFERENCES warehouses(warehouse_id),
+    CONSTRAINT chk_inv_qty      CHECK (quantity_on_hand  >= 0),
+    CONSTRAINT chk_inv_reserved CHECK (reserved_quantity >= 0),
+    CONSTRAINT chk_inv_available CHECK (quantity_on_hand >= reserved_quantity),
+
+    UNIQUE KEY uq_inv_variant_wh (variant_id, warehouse_id),
+    KEY        idx_inv_warehouse (warehouse_id),
+    KEY        idx_inv_low_stock (low_stock_alert, quantity_on_hand)
+) ENGINE=InnoDB COMMENT='Real-time inventory per variant per warehouse';
