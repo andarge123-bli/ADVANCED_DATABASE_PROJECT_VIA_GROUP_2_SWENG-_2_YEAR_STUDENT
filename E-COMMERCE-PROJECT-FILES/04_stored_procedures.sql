@@ -31,7 +31,7 @@ BEGIN
 
     SET v_date = DATE_FORMAT(NOW(), '%Y%m%d');
 
-    -- Atomic sequence via single-row counter table trick
+    -- Atomic Sequence via single-row counter table trick
     -- (In production, use a dedicated sequence table or UUID_SHORT())
     SELECT COALESCE(MAX(CAST(SUBSTRING_INDEX(order_number, '-', -1) AS UNSIGNED)), 0) + 1
     INTO   v_seq
@@ -44,7 +44,7 @@ END $$
 
 -- =============================================================================
 -- FUNCTION: fn_get_available_qty
--- Returns: quantity_on_hand - reserved_quantity for a variant in a warehouse
+-- Returns: Quantity_on_hand - reserved_quantity for a variant in a warehouse
 -- =============================================================================
 DROP FUNCTION IF EXISTS fn_get_available_qty $$
 CREATE FUNCTION fn_get_available_qty(
