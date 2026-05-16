@@ -129,7 +129,7 @@ CREATE TABLE user_roles (
 -- =============================================================================
 
 -- ---------------------------------------------------------------------------
--- 2.1  USERS  (base identity table)
+-- 2.1  USERS  (BASE IDENTITY TABLE)
 -- ---------------------------------------------------------------------------
 CREATE TABLE users (
     user_id          BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -200,7 +200,7 @@ UNIQUE (user_id, is_default) WHERE is_default = 1,
 ) ENGINE=InnoDB COMMENT='Shipping / billing addresses';
 
 -- ---------------------------------------------------------------------------
--- 2.3  SELLER PROFILES
+-- 2.3  SELLER PROFILES ( only for seller)
 -- ---------------------------------------------------------------------------
 CREATE TABLE seller_profiles (
     seller_id          BIGINT UNSIGNED PRIMARY KEY COMMENT 'Same as users.user_id',
@@ -328,7 +328,7 @@ CREATE TABLE attribute_values (
 ) ENGINE=InnoDB;
 
 -- ---------------------------------------------------------------------------
--- 3.5  PRODUCT VARIANTS  (specific sellable combinations)
+-- 3.5  PRODUCT VARIANTS  (SPECIFIC SELLABLE COMBINATIONS)
 -- ---------------------------------------------------------------------------
 CREATE TABLE product_variants (
     variant_id    BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
