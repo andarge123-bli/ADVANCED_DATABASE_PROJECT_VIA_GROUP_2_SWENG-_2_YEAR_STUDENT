@@ -158,7 +158,7 @@ JOIN seller_profiles  sp ON sp.seller_id    = p.seller_id
 WHERE pv.deleted_at IS NULL AND p.deleted_at IS NULL;
 
 -- =============================================================================
--- VIEW 5: Seller Performance Dashboard
+-- VIEW 5: Seller performance dashboard
 -- =============================================================================
 CREATE OR REPLACE VIEW vw_seller_performance AS
 SELECT
@@ -272,7 +272,7 @@ HAVING fraud_event_count > 0
 ORDER BY max_risk_score DESC, fraud_event_count DESC;
 
 -- =============================================================================
--- VIEW 8: Revenue by Region
+-- VIEW 8: Revenue By Region
 -- =============================================================================
 CREATE OR REPLACE VIEW vw_revenue_by_region AS
 SELECT
