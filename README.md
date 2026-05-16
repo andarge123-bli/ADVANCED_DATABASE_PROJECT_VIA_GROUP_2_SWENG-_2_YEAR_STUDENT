@@ -35,7 +35,7 @@
   </tr>
   <tr>
     <td>1</td>
-    <td>tilahun tolesa</td>
+    <td>Tilahun Tolesa</td>
     <td>8638/17</td>
     <td>SE</td>
   </tr>
