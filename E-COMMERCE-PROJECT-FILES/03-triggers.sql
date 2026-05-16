@@ -19,7 +19,7 @@ DELIMITER $$
 -- =============================================================================
 -- This is the critical anti-oversell gate. Raises an error if available
 -- stock is insufficient BEFORE inserting the order item.
--- Combined with SELECT ... FOR UPDATE in the stored procedure, this creates
+-- Combined with SELECT ... FOR UPDATE in the stored procedure, this CREATES
 -- a two-layer defense against overselling under high concurrency.
 -- =============================================================================
 
@@ -163,7 +163,7 @@ END $$
 -- =============================================================================
 -- TRIGGER 4: ORDER UPDATE — Enforce state-machine transitions
 -- =============================================================================
--- Valid transitions (simplified):
+-- VALID TRANSITIONS (simplified):
 --   PENDING → CONFIRMED | CANCELLED
 --   CONFIRMED → PROCESSING | CANCELLED
 --   PROCESSING → SHIPPED | CANCELLED
@@ -439,7 +439,7 @@ BEGIN
         END IF;
 
     ELSEIF NEW.status = 'SUCCESS' AND NEW.user_id IS NOT NULL THEN
-        -- Reset on successful login
+        -- Reset on successful LOGIN
         UPDATE users
         SET failed_login_cnt = 0,
             lockout_until    = NULL,
