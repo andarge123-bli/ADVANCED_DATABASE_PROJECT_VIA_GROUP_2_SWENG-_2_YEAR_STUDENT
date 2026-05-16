@@ -87,6 +87,12 @@
     <td>8668/17</td>
     <td>SE</td>
   </tr>
+  <tr>
+    <td>10</td>
+    <td>medaga taju</td>
+    <td>4428/16</td>
+    <td>SE</td>
+  </tr>
   
 </table>
 ## 📋 Table of Contents
