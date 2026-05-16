@@ -69,6 +69,12 @@
     <td>8554/17</td>
     <td>SE</td>
   </tr>
+  <tr>
+    <td>7</td>
+    <td>Alemayehu Worku</td>
+    <td>8556/17</td>
+    <td>SE</td>
+  </tr>
   
 </table>
 ## 📋 Table of Contents
