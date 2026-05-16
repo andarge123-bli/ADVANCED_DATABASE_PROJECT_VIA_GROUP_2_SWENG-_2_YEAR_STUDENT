@@ -1,5 +1,5 @@
 -- =============================================================================
--- SAMPLE DATA — Realistic seed data for Ethiopia E-Commerce Platform
+-- SAMPLE DATA — REALISTIC seed data for Ethiopia E-Commerce Platform
 -- File: 07_sample_data.sql
 -- =============================================================================
 
@@ -214,7 +214,7 @@ INSERT INTO seller_profiles (seller_id, business_name, business_type, region_id,
 (4, 'Yirgacheffe Coffee', 'COOPERATIVE', 3, 'Hawassa, Coffee Cooperative', 0.07, 4.90, 2311, 'VERIFIED', '2024-11-01 08:00:00');
 
 -- =============================================================================
--- 11. PRODUCTS
+-- 11. prodacts
 -- =============================================================================
 INSERT INTO products (product_id, seller_id, category_id, sku, product_name, slug, short_desc, description, brand, base_price, sale_price, currency, weight_grams, is_featured, is_active, rating, review_count) VALUES
 -- Tech products
