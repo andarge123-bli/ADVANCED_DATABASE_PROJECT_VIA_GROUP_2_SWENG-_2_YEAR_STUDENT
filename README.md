@@ -41,13 +41,13 @@
   </tr>
     <tr>
     <td>2</td>
-    <td>yohanna shimelis</td>
+    <td>Yohanna Shimelis</td>
     <td>8457/17</td>
     <td>SE</td>
   </tr>
   <tr>
      <td>3</td>
-    <td>andarge girma</td>
+    <td>Andarge Girma</td>
     <td>8739/17</td>
     <td>SE</td>
   </tr>
@@ -59,7 +59,7 @@
  </tr>
  <tr>
      <td>5</td>
-    <td>emnet lema</td>
+    <td>Emnet Lema</td>
     <td>7872/17</td>
     <td>SE</td>
   </tr>
