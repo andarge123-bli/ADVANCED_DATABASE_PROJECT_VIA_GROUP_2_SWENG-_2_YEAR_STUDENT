@@ -1,5 +1,5 @@
 -- =============================================================================
--- MASTER RUNNER — Ethiopia E-Commerce Platform
+-- MASTER RUNNER — ETHIOPIAN E-COMMERCE PLATFORM
 -- File: 00_master_runner.sql
 -- =============================================================================
 -- Run this file in order, or execute individual scripts as needed.
@@ -36,7 +36,7 @@
 -- Step 9: Distributed Architecture & Partitioning
 --   SOURCE 09_distributed_arch.sql;
 -- =============================================================================
--- QUICK VERIFICATION after running all scripts:
+-- QUICK VERIFICATION after running all scripts:(BUT FIRST YOU HAVE TO RUN THOSE FILE )
 -- ============================
 USE eth_ecommerce;
 
