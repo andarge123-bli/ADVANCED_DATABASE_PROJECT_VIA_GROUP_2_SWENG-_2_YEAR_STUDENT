@@ -498,6 +498,6 @@ This project was developed as part of the **Advanced Database Systems** course c
 
 **Ethiopian E-Commerce Platform · Advanced Database Systems · Group 2**
 
-*Second Year Software Engineering — 2025/2026*
+*Second Year Software Engineering — 2018 *
 
 </div>
