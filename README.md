@@ -78,7 +78,13 @@
   <tr>
     <td>8</td>
     <td>Biruk shiferaw </td>
-    <td>8654</td>
+    <td>8654/17</td>
+    <td>SE</td>
+  </tr>
+  <tr>
+    <td>9</td>
+    <td>leul solomon</td>
+    <td>8668/17</td>
     <td>SE</td>
   </tr>
   
