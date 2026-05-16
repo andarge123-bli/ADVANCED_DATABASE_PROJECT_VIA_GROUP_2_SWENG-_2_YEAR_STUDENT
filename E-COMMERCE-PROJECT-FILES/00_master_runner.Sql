@@ -2,7 +2,7 @@
 -- MASTER RUNNER — ETHIOPIAN E-COMMERCE PLATFORM
 -- File: 00_master_runner.sql
 -- =============================================================================
--- Run this file in order, or execute individual scripts as needed.
+-- Run this file in order, or EXCUITE individual scripts as NEEDED.
 -- Tested on: MySQL 8.0.35+
 -- Character Set: utf8mb4 / utf8mb4_unicode_ci
 -- Engine: InnoDB
