@@ -196,7 +196,7 @@ DO BEGIN
 END;
 
 -- =============================================================================
--- EVENT 7: Check and set low-stock alerts (runs every 2 hours)
+-- EVENT 7: Check and Set Low-stock alerts (runs every 2 hours)
 -- =============================================================================
 DROP EVENT IF EXISTS evt_check_low_stock;
 CREATE EVENT evt_check_low_stock
