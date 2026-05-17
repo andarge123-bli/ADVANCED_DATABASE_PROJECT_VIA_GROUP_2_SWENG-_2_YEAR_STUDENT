@@ -1,6 +1,5 @@
 # Ethiopian E-Commerce Platform
-
-## Advanced Database Systems — Group 2 Project
+##ADVANCED DATABASE SYSTEMS-GROUP 2 PROJECT
 
 ### Entity-Relationship Diagram & Relational Schema
 
