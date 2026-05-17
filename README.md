@@ -93,7 +93,12 @@
     <td>4428/16</td>
     <td>SE</td>
   </tr>
-  
+   <tr>
+    <td>11</td>
+    <td>Hilina Tamiru</td>
+    <td>8627/17</td>
+    <td>SE</td>
+  </tr>
 </table>
 ## 📋 Table of Contents
 
