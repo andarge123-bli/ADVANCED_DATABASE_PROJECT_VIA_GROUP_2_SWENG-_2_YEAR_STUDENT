@@ -59,7 +59,7 @@ The platform database is divided into the following domains:
 
 # Technology Focus
 
-- Relational Database Design
+- Relational DATABASE Design
 - PostgreSQL / MySQL Compatible Schema
 - High Scalability
 - Data Integrity Enforcement
@@ -203,7 +203,7 @@ This domain manages:
 The `USERS` entity acts as the core identity table for customers, admins, and sellers.
 
 ## Seller Profiles
-The `SELLER_PROFILES` entity extends users with business-specific information.
+The `SELLER_PROFILES` entity extends users with business - specific INFORMATION.
 
 ## Regional Structure
 The `REGIONS` table supports hierarchical Ethiopian geographic organization.
@@ -218,7 +218,7 @@ Reference tables improve normalization and enforce consistency across the platfo
 
 # Normalization Level
 
-- Fully normalized to **3NF / BCNF**
+- FULLY NORMALIZED TO **3NF / BCNF**
 - Lookup/reference isolation applied
 - Redundant data minimized
 - Relationship integrity enforced
