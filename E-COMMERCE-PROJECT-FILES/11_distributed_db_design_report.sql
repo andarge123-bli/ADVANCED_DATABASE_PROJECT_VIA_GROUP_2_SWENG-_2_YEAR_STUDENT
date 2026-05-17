@@ -1,16 +1,16 @@
 -- ################################################################################
 -- #                                                                              #
--- #    DISTRIBUTED DATABASE DESIGN REPORT  — ADVANCED EDITION                    #
+-- #           DISTRIBUTED DATABASE DESIGN REPORT                                 #
 -- #    Ethiopia E-Commerce Platform  (eth_ecommerce)                             #
 -- #                                                                              #
--- #    Author   : Principal Database Architect                                   #
+-- #    Author   : SE GROUP 2 STUDENT                                             #
 -- #    Version  : 2.0  (Advanced)                                                #
 -- #    Date     : 2026-04-07                                                     #
 -- #    DBMS     : MySQL 8.0.36+  (InnoDB, GTID, XA)                              #
 -- #    Scale    : 1 M → 50 M users, 8 Ethiopian cities, 4 shards                 #
 -- #                                                                              #
 -- #    This report covers every layer of a production distributed database:      #
--- #    theory, mathematics, implementation, operations, and failure modes.       #
+-- #    theory, mathematics, implementation, operations, and some failure modes.  #
 -- #                                                                              #
 -- ################################################################################
 -- ================================================================================
